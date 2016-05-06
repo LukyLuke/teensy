@@ -31,6 +31,14 @@
 # Debug files
 *.dSYM/
 
+# AVR Compile
+.dep/
+*.eep
+*.lss
+*.lst
+*.map
+*.sym
+
 # KDevelope
 *.kdev4
 .kdev4/
