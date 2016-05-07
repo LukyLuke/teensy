@@ -1,7 +1,10 @@
+#ifndef CONSOLE_DEBUG
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#endif
+
 #include "usb_keyboard.h"
 
 #ifndef KEYBOARD_EXAMPLE
