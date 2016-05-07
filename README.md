@@ -16,6 +16,8 @@ and presentations withing [ThinkArena](http://www.denkarena.ch/)
 
 The String can be of Keystrokes, Strings, Pause, Return and others:
 * The `K:` is used to simulate a KeyStroke with a modifier key
+** Modifiers are A(al), C(trl), W(in), S(hift), N(one)
+** To send a single space, use the `SP` with the `N` modifier: `K: N SP`
 * The `S:` is used to write a string
 * The `W:` is used to wait the given amount of milliseconds before the next line is processed
 * The `X` is used to send a ESC Keystroke

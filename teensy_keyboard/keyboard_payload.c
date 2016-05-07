@@ -46,15 +46,7 @@
 
 /**
  * The string to send by the Keyboard.
- * Use \n and not a new line for an ENTER stroke
- * 
- * The K: is used to simulate a KeyStroke with a modifier key
- * The S: is used to write a string and send the ENTER key at the end
- * The W: is used to wait the given amount of milliseconds before the next line is processed
- * 
- * Download something with the PowerShell in Windows
- * $client = New-Object System.Net.WebClient
- * $client.DownloadFile("http://www.example.com/file.exe", "C:\")
+ * @see parse_command_lines(char *str) for documentation
  */
 char *str = "K: ALT F2\n\
 W 500\n\
@@ -94,6 +86,7 @@ void parse_char(char *str);
  * -> R
  * 
  * The "K" is used to simulate a KeyStroke with a modifier key
+ *         Modifiers are A(al), C(trl), W(in), S(hift), N(one)
  * The "S" is used to write a string
  * The "W" is used to wait the given amount of milliseconds before the next line is processed
  * The "X" sends an ESC keystroke
@@ -199,6 +192,15 @@ void parse_command_lines(char *str) {
 						} else {
 							press_key = 9 + *send; // USB-Scankey for F1-F9 is 58-66
 						}
+						
+					// Space
+					} else if ( ((*send == 's') || (*send == 'S'))
+						&& ((*(send + 1) == 'p') || (*(send + 1) == 'P'))
+					) {
+						send++;
+						press_key = KEY_SPACE;
+						
+					// Any other key
 					} else {
 						parse_char(send++);
 					}
