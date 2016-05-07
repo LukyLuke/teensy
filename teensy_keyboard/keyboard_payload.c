@@ -76,10 +76,14 @@ void parse_char(char *str);
  * -> K: MODIFIER KEY
  * -> S: STRING TO SEND
  * -> W: 100
+ * -> E
+ * -> R
  * 
- * The K: is used to simulate a KeyStroke with a modifier key
- * The S: is used to write a string and send the ENTER key at the end
- * The W: is used to wait the given amount of milliseconds before the next line is processed
+ * The "K" is used to simulate a KeyStroke with a modifier key
+ * The "S" is used to write a string
+ * The "W" is used to wait the given amount of milliseconds before the next line is processed
+ * The "E" sends an ESC keystroke
+ * The "R" sends a RETURN keystroke
  * 
  * All spaces are removed between the command sequence and the first character
  * 
@@ -229,11 +233,6 @@ void parse_command_lines(char *str) {
 				usb_keyboard_press(press_key, press_modifier);
 #endif
 			}
-#ifdef CONSOLE_DEBUG
-			printf("  sending ENTER...\n");
-#else
-			usb_keyboard_press(KEY_ENTER, KEY_NONE);
-#endif
 			break;
 			
 		// Wait for the given amount of milliseconds
@@ -258,6 +257,36 @@ void parse_command_lines(char *str) {
 				timeout -= 10;
 				_delay_ms(10);
 			}
+#endif
+			break;
+			
+		case 'E':
+		case 'e':
+			// Read until the end of the line and press the ESCAPE key
+			while (1) {
+				chr = *(send++);
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending ESCAPE\n");
+#else
+			usb_keyboard_press(KEY_ESC, KEY_NONE);
+#endif
+			break;
+			
+		case 'R':
+		case 'r':
+			// Read until the end of the line and press the RETURN key
+			while (1) {
+				chr = *(send++);
+				if (chr == '\0') break;
+				if (chr == '\n') break;
+			}
+#ifdef CONSOLE_DEBUG
+			printf("> sending ENTER\n");
+#else
+			usb_keyboard_press(KEY_ENTER, KEY_NONE);
 #endif
 			break;
 	}
