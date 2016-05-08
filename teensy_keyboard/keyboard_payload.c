@@ -1,3 +1,21 @@
+/**
+ * A simple test for change a string into USB-Keyboard Scancodes:
+ * http://www.win.tue.nl/~aeb/linux/kbd/scancodes-14.html
+ * 
+ * Official USB-Guide: Chapter 10
+ * http://www.usb.org/developers/hidpage/Hut1_12v2.pdf
+ * 
+ * For the Keyboard-Layouts see:
+ * US: http://www.goodtyping.com/teclatUS.htm
+ * CH: http://home.datacomm.ch/t.bigler/sskbdsg.htm
+ * Others: https://www.terena.org/activities/multiling/ml-mua/test/kbd-all.html
+ * 
+ * @author Lukas Zurschmiede <l.zurschmiede@ranta.ch>
+ * @version 0.1
+ * @package teensy_keyboard
+ * @license GPL-v3
+ */
+
 /* License:
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -17,6 +35,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ */
+
+/**
+ * For debuging compile it like this:
+ * shell> gcc -DCONSOLE_DEBUG keyboard_payload.c -o main
+ * shell> ./main
  */
 
 /**
@@ -61,18 +85,6 @@ S sh hacked.sh &\n\
 E\0";
 
 /**
- * Keys to send as Keystrokes
- */
-int press_key = 0, press_modifier = 0;
-
-/**
- * Send a single character, defined by an array of chars, as Keystrokes
- * 
- * @param *str Pointer to the CharArray to send
- */
-void parse_char(char *str);
-
-/**
  * Parse the line and check for the following commands:
  * -> K MODIFIER KEY
  * -> S STRING TO SEND
@@ -86,7 +98,11 @@ void parse_char(char *str);
  * -> R
  * 
  * The "K" is used to simulate a KeyStroke with a modifier key
- *         Modifiers are A(al), C(trl), W(in), S(hift), N(one)
+ *         Modifiers are A(lt), C(trl), W(in), S(hift), N(one)
+ *         All keys after the modifier are sent in one keystroke
+ *         To make the Modifier be pressed and after send each key by himself
+ *         Special keys: CT(rl), AL(t), WI(n), SH(ift), DE(el), HO(me),
+ *                       IN(sert), EN(d), ES(cape), SY(srq), EN(ter), TA(b)
  * The "S" is used to write a string
  * The "W" is used to wait the given amount of milliseconds before the next line is processed
  * The "X" sends an ESC keystroke
@@ -103,6 +119,30 @@ void parse_char(char *str);
  * @param *str Pointer to the CharArray to send
  */
 void parse_command_lines(char *str);
+
+/**
+ * Keys to send as Keystrokes
+ */
+int press_key = 0, press_modifier = 0;
+
+/**
+ * Parse a single character, defined at the first position of an array of chars
+ * and sets the global press_key and press_modifier.
+ * 
+ * @param *str Pointer to the CharArray to send
+ */
+void parse_char(char *str);
+
+/**
+ * Parse a special key, defined at the first and second position of an array of chars
+ * and sets the global press_key and press_modifier.
+ * 
+ * Special Keys are:
+ *   Ctrl, Alt, Win, Shift, Del, Home, Insert, ENd, EScape, Sysrq, Return, Tab
+ * 
+ * @param *str Pointer to the CharArray to send
+ */
+void parse_special(char *str);
 
 
 /**
@@ -144,7 +184,11 @@ int main(void) {
  */
 void parse_command_lines(char *str) {
 	char *send = str, chr;
-	int cmd = *(send++), len = 1, sent = 0, timeout = 0;
+	int cmd = *(send++), len = 1, timeout = 0, current_key_pos = 0;
+#ifdef CONSOLE_DEBUG
+	// This is defined in usb_keyboard.c (as an array of int) which we not include in CONSOLE_DEBUG mode
+	char keyboard_keys[6] = { 0, 0, 0, 0, 0, 0 };
+#endif
 	
 	// Skip the ":" after the command
 	if (*send == ':') {
@@ -171,19 +215,38 @@ void parse_command_lines(char *str) {
 		case 'k':
 #ifdef CONSOLE_DEBUG
 			debug_char = *send;
-			printf("> Keystroke with modifier: %s", &debug_char);
+			printf("> Keystroke with modifier: %s and keys:", &debug_char);
 #endif
+			// When stroking more than a modifier and one key, this holds the position of the current pos in keyboard_keys[6] from usb_keyboard.c
+			current_key_pos = 0;
+			keyboard_keys[0] = 0;
+			keyboard_keys[1] = 0;
+			keyboard_keys[2] = 0;
+			keyboard_keys[3] = 0;
+			keyboard_keys[4] = 0;
+			keyboard_keys[5] = 0;
+			
 			while (1) {
 				chr = *(send++);
 				if (chr == '\0') break;
 				if (chr == '\r') continue;
 				if (chr == '\n') break;
-				if (chr == ' ' && !sent) {
+				if (current_key_pos >= 6) continue;
+				if (chr == ' ') {
+#ifdef CONSOLE_DEBUG
+					// For debug we need the real character, for the USB-Keyboard we first parse it (see below)
+					keyboard_keys[current_key_pos] = *send;
+#endif
+					
 					// Check for F1-F12 or parse a normal key
 					if ( ((*send == 'f') || (*send == 'F'))
 						&& ((*(send + 1) > 48) && (*(send + 1) < 58)) // Check ASCII-Code gt 0 and le 9
 					) {
 						send++;
+#ifdef CONSOLE_DEBUG
+						debug_char = *send;
+						printf(" F%s", &debug_char);
+#endif
 						
 						// Check for F10-12
 						if (((*(send + 1) > 47) && (*(send + 1) < 51))) {
@@ -193,52 +256,76 @@ void parse_command_lines(char *str) {
 							press_key = 9 + *send; // USB-Scankey for F1-F9 is 58-66
 						}
 						
-					// Space
-					} else if ( ((*send == 's') || (*send == 'S'))
-						&& ((*(send + 1) == 'p') || (*(send + 1) == 'P'))
-					) {
-						send++;
-						press_key = KEY_SPACE;
+					// Special command key made of at least 2 chars
+					} else if (*(send + 1) > 32) {
+						parse_special(send++);
+#ifdef CONSOLE_DEBUG
+						debug_char = *(send - 1);
+						printf(" +%s", &debug_char);
+						printf(" (%d)", press_key);
+#endif
 						
 					// Any other key
 					} else {
 						parse_char(send++);
+#ifdef CONSOLE_DEBUG
+						debug_char = *(send - 1);
+						printf(" %s", &debug_char);
+#endif
 					}
 					
-					switch (str[len]) {
-						case 'W':
-						case 'w':
-							press_modifier = KEY_GUI;
-							break;
-						case 'S':
-						case 's':
-							press_modifier = KEY_SHIFT;
-							break;
-						case 'C':
-						case 'c':
-							press_modifier = KEY_CTRL;
-							break;
-						case 'A':
-						case 'a':
-							press_modifier = KEY_ALT;
-							break;
-						default:
-							press_modifier = KEY_NONE;
-					}
-#ifdef CONSOLE_DEBUG
-					debug_char = *(send - 1);
-					printf(" and key: %s", &debug_char);
-					if ((*(send - 1) == 'f') || (*(send - 1) == 'F')) {
-						debug_char = *send;
-						printf("%s", &debug_char);
-					}
-					printf("\n");
-#else
-					usb_keyboard_press(press_key, press_modifier);
+					// Set the parsed key directly in the usb_keyboard variable keyboard_keys[6]
+#ifndef CONSOLE_DEBUG
+					keyboard_keys[current_key_pos] = press_key;
 #endif
-					sent = 1;
+					current_key_pos++;
+				}
+				
+				// Go forward to the next space
+				while (*send > 32) {
+					send++;
 				}
 			}
+			
+			// Send the Keystroke with the initial Modifier-Key
+			switch (str[len]) {
+				case 'W':
+				case 'w':
+					press_modifier = KEY_GUI;
+					break;
+				case 'S':
+				case 's':
+					press_modifier = KEY_SHIFT;
+					break;
+				case 'C':
+				case 'c':
+					press_modifier = KEY_CTRL;
+					break;
+				case 'A':
+				case 'a':
+					press_modifier = KEY_ALT;
+					break;
+				default:
+					press_modifier = KEY_NONE;
+			}
+#ifdef CONSOLE_DEBUG
+			printf("\n");
+#else
+			// The same way usb_keyboard_press() is doing but not with one key but with all we where reading out before
+			int8_t r;
+			keyboard_modifier_keys = press_modifier;
+			r = usb_keyboard_send();
+			if (!r) {
+				keyboard_modifier_keys = 0;
+				keyboard_keys[0] = 0;
+				keyboard_keys[1] = 0;
+				keyboard_keys[2] = 0;
+				keyboard_keys[3] = 0;
+				keyboard_keys[4] = 0;
+				keyboard_keys[5] = 0;
+				r = usb_keyboard_send();
+			}
+#endif
 			break;
 			
 		// Send a String and press ENTER at the end
@@ -376,7 +463,7 @@ void parse_command_lines(char *str) {
 #ifdef CONSOLE_DEBUG
 			printf("> sending LEFT\n");
 #else
-			usb_keyboard_press(KEY_LEF, KEY_NONE);
+			usb_keyboard_press(KEY_LEFT, KEY_NONE);
 #endif
 			break;
 			
@@ -419,10 +506,10 @@ void parse_char(char *str) {
 	
 	// Chars: ENTER, SPACE
 	if (chr == 10) {
-		press_key = 40;
+		press_key = KEY_ENTER;
 	}
 	else if (chr == 32) {
-		press_key = 44;
+		press_key = KEY_SPACE;
 	}
 	
 	// Chars: {|}~
@@ -541,7 +628,7 @@ void parse_char(char *str) {
 	// chars: 0
 	// the '0' is at position '39' for usb-keycodes
 	else if (chr == 48) {
-		press_key = 39;
+		press_key = KEY_0;
 	}
 	
 	// chars: 1-9
@@ -627,13 +714,69 @@ void parse_char(char *str) {
 	
 	// Nothing what we know yet
 	else {
-		press_key = 0;
+		press_key = KEY_NONE;
 	}
 	
 	// Only send a KeyStrokes if the values are valid.
 	// The range is from 4 up to 231
 	if (press_key <= 3 || press_key > 233) {
-		press_key = 0;
-		press_modifier = 0;
+		press_key = KEY_NONE;
+		press_modifier = KEY_NONE;
+	}
+}
+
+/**
+ * Implementation of parse_special(char *str)
+ */
+void parse_special(char *str) {
+	switch (*str) {
+		case 'A':
+		case 'a':
+			press_key = SKEY_ALT;
+			break;
+		case 'D':
+		case 'd':
+			press_key = KEY_DELETE;
+			break;
+		case 'C':
+		case 'c':
+			press_key = SKEY_CTRL;
+			break;
+		case 'E':
+		case 'e':
+			if ((*(str + 1) == 'S') || (*(str + 1) == 's')) {
+				press_key = KEY_ESC;
+			} else if ((*(str + 1) == 'N') || (*(str + 1) == 'n')) {
+			} else {
+				press_key = KEY_ENTER;
+			}
+			break;
+		case 'H':
+		case 'h':
+			press_key = KEY_HOME;
+			break;
+		case 'I':
+		case 'i':
+			press_key = KEY_INSERT;
+			break;
+		case 'P':
+		case 'p':
+			press_key = KEY_PRINTSCREEN;
+			break;
+		case 'R':
+		case 'r':
+			press_key = KEY_ENTER;
+			break;
+		case 'S':
+		case 's':
+			press_key = SKEY_SHIFT;
+			break;
+		case 'W':
+		case 'w':
+			press_key = SKEY_GUI;
+			break;
+		default:
+			press_key = KEY_NONE;
+			break;
 	}
 }
