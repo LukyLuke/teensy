@@ -1,4 +1,5 @@
 # Object files
+main
 *.o
 *.ko
 *.obj
@@ -30,6 +31,7 @@
 
 # Debug files
 *.dSYM/
+*~
 
 # AVR Compile
 .dep/
