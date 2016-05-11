@@ -307,10 +307,12 @@ void parse_command_lines(char *str) {
 					}
 					
 					// Set the parsed key directly in the usb_keyboard variable keyboard_keys[6]
+					if (press_key != KEY_NONE) {
 #ifndef CONSOLE_DEBUG
-					keyboard_keys[current_key_pos] = press_key;
+						keyboard_keys[current_key_pos] = press_key;
 #endif
-					current_key_pos++;
+						current_key_pos++;
+					}
 				}
 				
 				// Go forward to the next space
